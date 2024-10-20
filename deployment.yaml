@@ -1,0 +1,24 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: workout-tracker
+  labels:
+    app: workout-tracker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: workout-tracker
+  # pod spec begins here
+  template:
+    metadata:
+      labels:
+        app: workout-tracker
+    spec:
+      containers:
+        - name: todoapp
+          image: registry.digitalocean.com/lab8-go-registry/lab8:0.0.1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
