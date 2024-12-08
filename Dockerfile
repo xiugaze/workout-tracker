@@ -11,4 +11,4 @@ RUN go build -o main .
 
 EXPOSE 8080
 
-CMD ["./main", "127.0.0.1"]
+CMD ["./main", "0.0.0.0"]
