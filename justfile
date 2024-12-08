@@ -4,8 +4,9 @@ alias c := compile
 build:
   docker compose up --build
 
+# -C is change to directory before running
 compile: 
-  go build ./app
+  go build -C ./app
 
 # port 80 is http, so you can access just through http://localhost
 up: 
