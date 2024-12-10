@@ -6,7 +6,7 @@ build:
 
 # -C is change to directory before running
 compile: 
-  go build -C ./app -o app  
+  go build -C ./app -o app.o
 
 # port 80 is http, so you can access just through http://localhost
 up: 
