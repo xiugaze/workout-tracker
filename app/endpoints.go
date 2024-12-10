@@ -10,7 +10,8 @@ import (
 
 func addEndpoints() {
     http.HandleFunc("/add-workout", addWorkoutHandler) 
-    http.HandleFunc("/serve-workouts", serveWorkouts) // TODO: refactor this into two endpoints
+    http.HandleFunc("/list-workouts", listWorkouts) 
+    http.HandleFunc("/serve-workouts", serveWorkouts) 
     http.HandleFunc("/delete-workout", deleteWorkoutHandler)
 }
 
@@ -77,6 +78,39 @@ func deleteWorkoutHandler(w http.ResponseWriter, r *http.Request) {
     w.Header().Set("Content-Type", "application/json")
     w.WriteHeader(http.StatusOK)
     w.Write([]byte(`{"message": "Workout deleted successfully!"}`))
+}
+
+
+type WorkoutRecord struct {
+    ID       int    `json:"id"`
+    Name     string `json:"name"`
+    Duration int    `json:"duration"`
+    Time     string `json:"time"`
+}
+
+func listWorkouts(w http.ResponseWriter, _ *http.Request) {
+    rows, err := db.Query("SELECT id, name, duration, time FROM workouts ORDER BY time DESC")
+    if err != nil {
+        http.Error(w, "Error fetching workout records", http.StatusInternalServerError)
+        return
+    }
+    defer rows.Close()
+
+    var workoutRecords []WorkoutRecord
+    for rows.Next() {
+        var workoutRecord WorkoutRecord
+        if err := rows.Scan(&workoutRecord.ID, &workoutRecord.Name, &workoutRecord.Duration, &workoutRecord.Time); err != nil {
+            http.Error(w, "Error scanning workout records", http.StatusInternalServerError)
+            return
+        }
+        workoutRecords = append(workoutRecords, workoutRecord)
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    if err := json.NewEncoder(w).Encode(workoutRecords); err != nil {
+        http.Error(w, "Error serializing workout records", http.StatusInternalServerError)
+        return
+    }
 }
 
 /* endpoint: workouts */

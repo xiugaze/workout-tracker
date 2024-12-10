@@ -15,7 +15,16 @@
             <button type="submit">Add Workout</button>
         </form>
         <br>
-        <a href="/serve-workouts"><button>View All Workouts</button></a>
+        <a href="/workouts"><button>View All Workouts</button></a>
+        <script>
+            window.onload = function() {
+              const params = new URLSearchParams(window.location.search);
+              if (params.get('success') === 'true') {
+                    const workoutName = params.get('workout') || "Workout";
+                    alert(workoutName + " added successfully!");
+              }
+            }
+        </script>
     </div>
 </body>
 </html>

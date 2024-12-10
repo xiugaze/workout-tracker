@@ -7,12 +7,14 @@ import (
     "io"
     "net/http"
     "strconv"
+    "fmt"
 )
 
 func addPages() {
     http.HandleFunc("/", serveHome) // home page 
     http.HandleFunc("/add-form", addFormHandler) // adding workout form
     http.HandleFunc("/delete-button/", deleteButtonHandler) // adding workout form
+    http.HandleFunc("/workouts", workoutsPageHandler) // adding workout form
     http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static")))) // CSS
 }
 
@@ -56,10 +58,18 @@ func addFormHandler(w http.ResponseWriter, r *http.Request) {
     }
     defer resp.Body.Close()
 
-    // Relay the response back to the client
-    w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
-    w.WriteHeader(resp.StatusCode)
-    io.Copy(w, resp.Body)
+    if resp.StatusCode == http.StatusOK {
+        http.Redirect(
+            w,
+            r,
+            fmt.Sprintf("/?success=true&workout=%s", workout.Name), 
+            http.StatusSeeOther,
+        )
+    } else {
+        w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
+        w.WriteHeader(resp.StatusCode)
+        io.Copy(w, resp.Body)
+    }
 }
 
 func deleteButtonHandler(w http.ResponseWriter, r *http.Request) {
@@ -84,7 +94,37 @@ func deleteButtonHandler(w http.ResponseWriter, r *http.Request) {
     }
     defer resp.Body.Close()
 
-    w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
-    w.WriteHeader(resp.StatusCode)
-    io.Copy(w, resp.Body)
+    if resp.StatusCode == http.StatusOK {
+        http.Redirect(
+            w,
+            r,
+            fmt.Sprintf("/workouts"), 
+            http.StatusSeeOther,
+        )
+    } else {
+        w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
+        w.WriteHeader(resp.StatusCode)
+        io.Copy(w, resp.Body)
+    }
 }
+
+func workoutsPageHandler(w http.ResponseWriter, r *http.Request) {
+    resp, err := http.Get("http://localhost:8080/list-workouts")  
+    if err != nil {
+        http.Error(w, "Error fetching workout records", http.StatusInternalServerError)
+        return
+    }
+    defer resp.Body.Close()
+
+    var workoutRecords []WorkoutRecord
+    if err := json.NewDecoder(resp.Body).Decode(&workoutRecords); err != nil {
+        http.Error(w, "Error parsing JSON data", http.StatusInternalServerError)
+        return
+    }
+
+    tmpl := template.Must(template.ParseFiles("templates/workouts.html"))
+    if err := tmpl.Execute(w, workoutRecords); err != nil {
+        http.Error(w, "Error rendering template", http.StatusInternalServerError)
+    }
+}
+
