@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lifts for Workout</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Lifts for {{.WorkoutName}}</h1>
+        <form id="addLiftForm">
+            <input type="hidden" id="workout_id" value="{{.WorkoutID}}" />
+            <input type="text" id="name" placeholder="Lift Name" required>
+            <input type="number" id="weight" placeholder="Weight (kg)" required>
+            <input type="number" id="reps" placeholder="Reps" required>
+            <input type="number" id="lift_order" placeholder="Order" required>
+            <input type="number" id="rest_time" placeholder="Rest Time (sec)" required>
+            <input type="number" id="bpm" placeholder="BPM (optional)">
+            <button type="button" onclick="submitLift()">Add Lift</button>
+        </form>
+        <ul>
+            {{range .Lifts}}
+            <li>{{.Name}} - {{.Weight}}kg, {{.Reps}} reps (Order: {{.LiftOrder}}, Rest: {{.RestTime}}s, BPM: {{.BPM}})</li>
+            {{end}}
+        </ul>
+    </div>
+
+    <script>
+        function submitLift() {
+            const lift = {
+                workout_id: parseInt(document.getElementById('workout_id').value),
+                name: document.getElementById('name').value,
+                weight: parseFloat(document.getElementById('weight').value),
+                reps: parseInt(document.getElementById('reps').value),
+                lift_order: parseInt(document.getElementById('lift_order').value),
+                rest_time: parseInt(document.getElementById('rest_time').value),
+                bpm: parseInt(document.getElementById('bpm').value) || null
+            };
+
+            fetch('/add-lift', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(lift)
+            }).then(response => {
+                if (response.ok) {
+                    alert("Lift added successfully!");
+                    location.reload();
+                } else {
+                    alert("Failed to add lift! Check your input.");
+                }
+            }).catch(err => {
+                console.error(err);
+                alert("Error adding lift!");
+            });
+        }
+    </script>
+</body>
+</html>

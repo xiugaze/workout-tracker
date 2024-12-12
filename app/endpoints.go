@@ -1,57 +1,140 @@
 package main
 
 import (
-    //"database/sql"
-    "encoding/json"
-    "html/template"
-    "log"
-    "net/http"
+	"encoding/json"
+	"log"
+	"net/http"
+	//"strconv"
 )
 
 func addEndpoints() {
-    http.HandleFunc("/add-workout", addWorkoutHandler) 
-    http.HandleFunc("/list-workouts", listWorkouts) 
-    http.HandleFunc("/serve-workouts", serveWorkouts) 
+	http.HandleFunc("/add-workout", addWorkoutHandler)
+	http.HandleFunc("/list-workouts", listWorkoutsHandler)
+	http.HandleFunc("/add-lift", addLiftHandler)
+	http.HandleFunc("/list-lifts", listLiftsHandler)
     http.HandleFunc("/delete-workout", deleteWorkoutHandler)
 }
 
 type Workout struct {
-    Name        string  `json:"name"`
-    Duration    int     `json:"duration"`
+	ID       int    `json:"id"`
+	Name     string `json:"name"`
+	Duration int    `json:"duration"`
+	Time     string `json:"time"`
 }
 
-type DeleteRequest struct {
-    ID string `json:"id"`
+type Lift struct {
+    WorkoutID int     `json:"workout_id"`
+    Name      string  `json:"name"`
+    Weight    float64 `json:"weight"`
+    Reps      int     `json:"reps"`
+    LiftOrder int     `json:"lift_order"`
+    RestTime  int     `json:"rest_time"`
+    BPM       int     `json:"bpm"`
 }
 
 func addWorkoutHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var workout Workout
+	err := json.NewDecoder(r.Body).Decode(&workout)
+	if err != nil {
+		http.Error(w, "Invalid JSON data", http.StatusBadRequest)
+		return
+	}
+
+	_, err = db.Exec("INSERT INTO workouts (name, duration) VALUES ($1, $2)", workout.Name, workout.Duration)
+	if err != nil {
+		http.Error(w, "Error adding workout", http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("Workout Added: Name=%s, Duration=%d minutes", workout.Name, workout.Duration)
+	w.WriteHeader(http.StatusOK)
+}
+
+func listWorkoutsHandler(w http.ResponseWriter, r *http.Request) {
+	rows, err := db.Query("SELECT id, name, duration, time FROM workouts ORDER BY time DESC")
+	if err != nil {
+		http.Error(w, "Error fetching workouts", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var workouts []Workout
+	for rows.Next() {
+		var workout Workout
+		if err := rows.Scan(&workout.ID, &workout.Name, &workout.Duration, &workout.Time); err != nil {
+			http.Error(w, "Error scanning workouts", http.StatusInternalServerError)
+			return
+		}
+		workouts = append(workouts, workout)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(workouts)
+}
+
+func addLiftHandler(w http.ResponseWriter, r *http.Request) {
     if r.Method != http.MethodPost {
         http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
         return
     }
 
-    // Parse JSON body
-    var workout Workout
-    err := json.NewDecoder(r.Body).Decode(&workout)
+    var lift Lift
+    err := json.NewDecoder(r.Body).Decode(&lift)
     if err != nil {
+        log.Printf("Error decoding JSON: %v", err)
         http.Error(w, "Invalid JSON data", http.StatusBadRequest)
         return
     }
 
-    _, err = db.Exec("INSERT INTO workouts (name, duration) VALUES ($1, $2)", workout.Name, workout.Duration)
-    if err != nil {
-        http.Error(w, "Error adding workout", http.StatusInternalServerError)
-        return
-    }
+    log.Printf("Received Lift: %+v", lift)
 
-    log.Printf("Workout Added: Name=%s, Duration=%d minutes", workout.Name, workout.Duration)
+	_, err = db.Exec(`
+        INSERT INTO lifts (workout_id, name, weight, reps, lift_order, rest_time, bpm)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+		lift.WorkoutID, lift.Name, lift.Weight, lift.Reps, lift.LiftOrder, lift.RestTime, lift.BPM)
+	if err != nil {
+		http.Error(w, "Error adding lift", http.StatusInternalServerError)
+		return
+	}
 
-    w.Header().Set("Content-Type", "application/json")
-    w.WriteHeader(http.StatusOK)
-    w.Write([]byte(`{"message": "Workout added successfully!"}`))
+	log.Printf("Lift Added: %v", lift)
+	w.WriteHeader(http.StatusOK)
 }
 
+func listLiftsHandler(w http.ResponseWriter, r *http.Request) {
+	workoutID := r.URL.Query().Get("workout_id")
+	if workoutID == "" {
+		http.Error(w, "Missing workout_id", http.StatusBadRequest)
+		return
+	}
 
+	rows, err := db.Query(`
+        SELECT id, name, weight, reps, lift_order, rest_time, bpm
+        FROM lifts WHERE workout_id = $1 ORDER BY lift_order`, workoutID)
+	if err != nil {
+		http.Error(w, "Error fetching lifts", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var lifts []Lift
+	for rows.Next() {
+		var lift Lift
+		if err := rows.Scan(&lift.WorkoutID, &lift.Name, &lift.Weight, &lift.Reps, &lift.LiftOrder, &lift.RestTime, &lift.BPM); err != nil {
+			http.Error(w, "Error scanning lifts", http.StatusInternalServerError)
+			return
+		}
+		lifts = append(lifts, lift)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(lifts)
+}
 
 func deleteWorkoutHandler(w http.ResponseWriter, r *http.Request) {
     if r.Method != http.MethodPost {
@@ -59,92 +142,19 @@ func deleteWorkoutHandler(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    var deleteReq DeleteRequest
-    err := json.NewDecoder(r.Body).Decode(&deleteReq)
-    if err != nil {
+    var req struct {
+        ID string `json:"id"`
+    }
+    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
         http.Error(w, "Invalid JSON data", http.StatusBadRequest)
         return
     }
 
-    _, err = db.Exec("DELETE FROM workouts WHERE id = $1", deleteReq.ID)
-
+    _, err := db.Exec("DELETE FROM workouts WHERE id = $1", req.ID)
     if err != nil {
         http.Error(w, "Error deleting workout", http.StatusInternalServerError)
         return
     }
 
-    log.Printf("Workout Deleted: ID=%s", deleteReq.ID)
-
-    w.Header().Set("Content-Type", "application/json")
     w.WriteHeader(http.StatusOK)
-    w.Write([]byte(`{"message": "Workout deleted successfully!"}`))
 }
-
-
-type WorkoutRecord struct {
-    ID       int    `json:"id"`
-    Name     string `json:"name"`
-    Duration int    `json:"duration"`
-    Time     string `json:"time"`
-}
-
-func listWorkouts(w http.ResponseWriter, _ *http.Request) {
-    rows, err := db.Query("SELECT id, name, duration, time FROM workouts ORDER BY time DESC")
-    if err != nil {
-        http.Error(w, "Error fetching workout records", http.StatusInternalServerError)
-        return
-    }
-    defer rows.Close()
-
-    var workoutRecords []WorkoutRecord
-    for rows.Next() {
-        var workoutRecord WorkoutRecord
-        if err := rows.Scan(&workoutRecord.ID, &workoutRecord.Name, &workoutRecord.Duration, &workoutRecord.Time); err != nil {
-            http.Error(w, "Error scanning workout records", http.StatusInternalServerError)
-            return
-        }
-        workoutRecords = append(workoutRecords, workoutRecord)
-    }
-
-    w.Header().Set("Content-Type", "application/json")
-    if err := json.NewEncoder(w).Encode(workoutRecords); err != nil {
-        http.Error(w, "Error serializing workout records", http.StatusInternalServerError)
-        return
-    }
-}
-
-/* endpoint: workouts */
-func serveWorkouts(w http.ResponseWriter, r *http.Request) {
-    rows, err := db.Query("SELECT id, name, duration, time FROM workouts ORDER BY time DESC")
-    if err != nil {
-        http.Error(w, "Error fetching workouts", http.StatusInternalServerError)
-        return
-    }
-    defer rows.Close()
-
-    var workouts []struct {
-        ID       int
-        Name     string
-        Duration int
-        Time     string
-    }
-
-    for rows.Next() {
-        var workout struct {
-            ID       int
-            Name     string
-            Duration int
-            Time     string
-        }
-        err := rows.Scan(&workout.ID, &workout.Name, &workout.Duration, &workout.Time)
-        if err != nil {
-            http.Error(w, "Error scanning workouts", http.StatusInternalServerError)
-            return
-        }
-        workouts = append(workouts, workout)
-    }
-
-    tmpl := template.Must(template.ParseFiles("templates/workouts.html"))
-    tmpl.Execute(w, workouts)
-}
-
