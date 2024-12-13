@@ -22,4 +22,6 @@ start:
   docker compose start
 
 clean: 
-  docker rm $(docker ps -a -q)
+  docker compose down
+  - docker rm $(docker ps -a -q)
+  docker volume rm workout-tracker_db_data
