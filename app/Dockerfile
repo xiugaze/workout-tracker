@@ -7,6 +7,11 @@ RUN go mod download
 
 COPY . .
 
+
+COPY templates/ /app/templates/
+COPY static/ /app/static/
+
+
 RUN go build -o main .
 
 EXPOSE 8080

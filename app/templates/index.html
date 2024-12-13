@@ -9,22 +9,49 @@
 <body>
     <div class="container">
         <h1>Workout Tracker</h1>
-        <form action="/add-form" method="POST">
-            <input type="text" name="name" placeholder="Workout Name" required>
-            <input type="number" name="duration" placeholder="Duration (minutes)" required>
-            <button type="submit">Add Workout</button>
+        <form id="addWeekForm">
+            <label for="start_date">Week Start Date:</label>
+            <input type="date" id="start_date" name="start_date" required>
+            <button type="button" onclick="submitWeek()">Add Week</button>
         </form>
         <br>
-        <a href="/workouts"><button>View All Workouts</button></a>
-        <script>
-            window.onload = function() {
-              const params = new URLSearchParams(window.location.search);
-              if (params.get('success') === 'true') {
-                    const workoutName = params.get('workout') || "Workout";
-                    alert(workoutName + " added successfully!");
-              }
-            }
-        </script>
+        <a href="/weeks"><button type="button">View All Weeks</button></a>
     </div>
+
+    <script>
+        async function submitWeek() {
+            const startDate = document.getElementById('start_date').value;
+
+            if (!startDate) {
+                alert("Please select a start date for the week.");
+                return;
+            }
+
+            const weekData = {
+                start_date: startDate
+            };
+
+            try {
+                const response = await fetch('/add-week', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(weekData)
+                });
+
+                if (response.ok) {
+                    alert("Week added successfully!");
+                    window.location.href = '/weeks';
+                } else {
+                    const error = await response.text();
+                    alert(`Failed to add week: ${error}`);
+                }
+            } catch (error) {
+                console.error("Error adding week:", error);
+                alert("An error occurred while adding the week.");
+            }
+        }
+    </script>
 </body>
 </html>

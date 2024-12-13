@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Days in Week</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Days in Week Starting {{.WeekStartDate}}</h1>
+        <!-- Add Day Form -->
+        <form id="add-day-form">
+            <input type="hidden" name="week_id" value="{{.WeekID}}">
+            <input type="date" name="day_date" placeholder="Day Date" required>
+            <button type="submit">Add Day</button>
+        </form>
+
+        <!-- Days List -->
+        <ul id="days-list">
+            {{range .Days}}
+            <li id="day-{{.ID}}">
+                {{.DayDate}}
+                <a href="/workouts?day_id={{.ID}}">
+                    <button type="button">View Workouts</button>
+                </a>
+                <a href="/meals?day_id={{.ID}}">
+                    <button type="button">View Meals</button>
+                </a>
+            </li>
+            {{end}}
+        </ul>
+
+        <a href="/weeks"><button type="button">Back to Weeks</button></a>
+    </div>
+
+    <script>
+
+        // Handle Add Day Form Submission
+        document.getElementById('add-day-form').addEventListener('submit', async function (event) {
+            event.preventDefault(); // Prevent form from refreshing the page
+
+            const form = event.target;
+            const weekID = form.querySelector('input[name="week_id"]').value;
+            const dayDate = form.querySelector('input[name="day_date"]').value;
+
+            if (!dayDate) {
+                alert('Please select a valid date.');
+                return;
+            }
+
+            try {
+                const response = await fetch('/add-day', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({ week_id: weekID, day_date: dayDate }),
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Server responded with status ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                // Update the UI dynamically with the new day
+                const daysList = document.getElementById('days-list');
+                const newDay = document.createElement('li');
+                newDay.id = `day-${data.dayID}`;
+                newDay.innerHTML = `
+                    ${dayDate}
+                    <button type="button" onclick="viewWorkouts(${data.dayID})">View Workouts</button>
+                `;
+                daysList.appendChild(newDay);
+
+                // Clear the date input
+                form.querySelector('input[name="day_date"]').value = '';
+                alert(data.message);
+            } catch (error) {
+                console.error('Error adding day:', error);
+                alert('Failed to add day. Please try again.');
+            }
+        });
+    </script>
+</body>
+</html>
