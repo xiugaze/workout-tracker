@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meals</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Meals for {{.DayDate}}</h1>
+        <form action="/add-meal" method="POST">
+            <input type="hidden" name="day_id" value="{{.DayID}}">
+            <input type="text" name="name" placeholder="Meal Name" required>
+            <input type="number" name="calories" placeholder="Calories" required>
+            <button type="submit">Add Meal</button>
+        </form>
+        <ul>
+            {{range .Meals}}
+            <li>
+                {{.Name}} ({{.Calories}} calories)
+            </li>
+            {{end}}
+        </ul>
+        <a href="/days?week_id={{.WeekID}}"><button>Back to Days</button></a>
+    </div>
+
+    <script>
+        document.querySelector("form").addEventListener("submit", async function (event) {
+            event.preventDefault(); // Prevent the default form submission behavior
+    
+            const form = event.target;
+            const dayID = form.querySelector('input[name="day_id"]').value;
+            const name = form.querySelector('input[name="name"]').value;
+            const calories = form.querySelector('input[name="calories"]').value;
+    
+            if (!name || !calories) {
+                alert("Please provide valid meal details.");
+                return;
+            }
+    
+            const mealData = {
+                day_id: parseInt(dayID, 10),
+                name: name,
+                calories: parseInt(calories, 10),
+            };
+    
+            try {
+                const response = await fetch('/add-meal', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(mealData),
+                });
+    
+                if (!response.ok) {
+                    throw new Error(`Failed to add meal: ${response.status}`);
+                }
+    
+                alert("Meal added successfully!");
+    
+                // Optionally, refresh the page or update the meals list dynamically
+                location.reload();
+            } catch (error) {
+                console.error("Error adding meal:", error);
+                alert("Failed to add meal. Please try again.");
+            }
+        });
+    </script>
+</body>
+</html>

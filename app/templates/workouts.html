@@ -7,33 +7,67 @@
     <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
-    <div>
-        <h1>Workout List</h1>
-    </div>
-    <table>
-        <thead>
-            <tr>
-                <th>Name</th>
-                <th>Duration (minutes)</th>
-                <th>Time</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {{range .}}
-                <tr>
-                    <td>{{.Name}}</td>
-                    <td>{{.Duration}}</td>
-                    <td>{{.Time}}</td>
-                    <td>
-                        <form action="/delete-button/{{.ID}}" method="POST" style="display:inline;">
-                            <button type="submit" class="delete-button">Delete</button>
-                        </form>
-                        <a href="/lifts?workout_id={{.ID}}"><button>View Lifts</button></a>
-                    </td>
-                </tr>
+    <div class="container">
+        <h1>Workouts for {{.DayDate}}</h1>
+        <form id="addWorkoutForm">
+            <input type="hidden" name="day_id" value="{{.DayID}}">
+            <input type="text" id="workoutName" name="name" placeholder="Workout Name" required>
+            <input type="number" id="workoutDuration" name="duration" placeholder="Duration (minutes)" required>
+            <button type="button" onclick="submitWorkout()">Add Workout</button>
+        </form>
+        <ul id="workoutList">
+            {{range .Workouts}}
+            <li id="workout-{{.ID}}">
+                {{.Name}} ({{.Duration}} minutes)
+                <a href="/lifts?workout_id={{.ID}}"><button>View Lifts</button></a>
+            </li>
             {{end}}
-        </tbody>
-    </table>
+        </ul>
+        <a href="/days?week_id={{.WeekID}}"><button>Back to Days</button></a>
+    </div>
+
+    <script>
+            async function submitWorkout() {
+                const dayId = document.querySelector('input[name="day_id"]').value;
+                const name = document.getElementById('workoutName').value;
+                const duration = parseInt(document.getElementById('workoutDuration').value, 10);
+
+                if (!name || isNaN(duration)) {
+                    alert("Please fill out all fields with valid data.");
+                    return;
+                }
+
+                try {
+                    const response = await fetch('/add-workout', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ day_id: dayId, name, duration }),
+                    });
+
+                    if (!response.ok) {
+                        const error = await response.text();
+                        throw new Error(error);
+                    }
+
+                    const data = await response.json();
+
+                    const workoutList = document.getElementById('workoutList');
+                    const newWorkout = document.createElement('li');
+                    newWorkout.id = `workout-${data.id}`;
+                    newWorkout.innerHTML = `
+                        ${name} (${duration} minutes)
+                        <a href="/lifts?workout_id=${data.id}"><button>View Lifts</button></a>
+                    `;
+                    workoutList.appendChild(newWorkout);
+
+                    document.getElementById('workoutName').value = '';
+                    document.getElementById('workoutDuration').value = '';
+                } catch (error) {
+                    console.error("Error adding workout:", error);
+                    alert("Failed to add workout. Please try again.");
+                }
+        }
+
+    </script>
 </body>
 </html>

@@ -2,8 +2,13 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
+	"strconv"
+
+	//"strconv"
+	"time"
 	//"strconv"
 )
 
@@ -13,13 +18,16 @@ func addEndpoints() {
 	http.HandleFunc("/add-lift", addLiftHandler)
 	http.HandleFunc("/list-lifts", listLiftsHandler)
     http.HandleFunc("/delete-workout", deleteWorkoutHandler)
+	http.HandleFunc("/add-week", addWeekHandler)
+    http.HandleFunc("/add-day", addDayHandler)
+    http.HandleFunc("/add-meal", addMealHandler)
 }
 
 type Workout struct {
 	ID       int    `json:"id"`
 	Name     string `json:"name"`
 	Duration int    `json:"duration"`
-	Time     string `json:"time"`
+	Time     time.Time `json:"time"`
 }
 
 type Lift struct {
@@ -31,42 +39,177 @@ type Lift struct {
     RestTime  int     `json:"rest_time"`
     BPM       int     `json:"bpm"`
 }
-
-func addWorkoutHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
-		return
-	}
-
-	var workout Workout
-	err := json.NewDecoder(r.Body).Decode(&workout)
-	if err != nil {
-		http.Error(w, "Invalid JSON data", http.StatusBadRequest)
-		return
-	}
-
-	_, err = db.Exec("INSERT INTO workouts (name, duration) VALUES ($1, $2)", workout.Name, workout.Duration)
-	if err != nil {
-		http.Error(w, "Error adding workout", http.StatusInternalServerError)
-		return
-	}
-
-	log.Printf("Workout Added: Name=%s, Duration=%d minutes", workout.Name, workout.Duration)
-	w.WriteHeader(http.StatusOK)
+type Week struct {
+    ID        int    `json:"id"`
+    StartDate string `json:"start_date"`
 }
 
+type Day struct {
+    ID       int    `json:"id"`
+    WeekID   int    `json:"week_id"`
+    DayDate  string `json:"day_date"`
+}
+
+type Meal struct {
+    ID       int    `json:"id"`
+    DayID    int    `json:"day_id"`
+    Name     string `json:"name"`
+    Calories int    `json:"calories"`
+}
+
+func addWeekHandler(w http.ResponseWriter, r *http.Request) {
+    if r.Method != http.MethodPost {
+        http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+        return
+    }
+
+    var week Week
+    if err := json.NewDecoder(r.Body).Decode(&week); err != nil {
+        http.Error(w, "Invalid JSON data", http.StatusBadRequest)
+        return
+    }
+
+    _, err := db.Exec("INSERT INTO weeks (start_date) VALUES ($1)", week.StartDate)
+    if err != nil {
+        http.Error(w, "Error adding week", http.StatusInternalServerError)
+        return
+    }
+
+    w.WriteHeader(http.StatusOK)
+}
+
+func addDayHandler(w http.ResponseWriter, r *http.Request) {
+    if r.Method != http.MethodPost {
+        http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+        return
+    }
+
+    weekID := r.FormValue("week_id")
+    dayDate := r.FormValue("day_date")
+
+    if weekID == "" || dayDate == "" {
+        http.Error(w, "Missing week_id or day_date", http.StatusBadRequest)
+        return
+    }
+
+    // Insert the new day and return the inserted ID
+    var dayID int
+    err := db.QueryRow("INSERT INTO days (week_id, day_date) VALUES ($1, $2) RETURNING id", weekID, dayDate).Scan(&dayID)
+    if err != nil {
+        log.Printf("Error inserting day: %v", err)
+        http.Error(w, "Error inserting day", http.StatusInternalServerError)
+        return
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(map[string]interface{}{
+        "status": "success",
+        "message": "Day added successfully",
+        "dayID": dayID,
+    })
+}
+
+func addMealHandler(w http.ResponseWriter, r *http.Request) {
+    if r.Method != http.MethodPost {
+        http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+        return
+    }
+
+    var meal Meal
+    if err := json.NewDecoder(r.Body).Decode(&meal); err != nil {
+        log.Printf("Invalid JSON format: %v", err)
+        http.Error(w, "Invalid JSON data", http.StatusBadRequest)
+        return
+    }
+
+    _, err := db.Exec("INSERT INTO meals (day_id, name, calories) VALUES ($1, $2, $3)", meal.DayID, meal.Name, meal.Calories)
+    if err != nil {
+        log.Printf("Error inserting meal: %v", err)
+        http.Error(w, "Error adding meal", http.StatusInternalServerError)
+        return
+    }
+
+    w.WriteHeader(http.StatusOK)
+    json.NewEncoder(w).Encode(map[string]string{
+        "status":  "success",
+        "message": "Meal added successfully",
+    })
+}
+
+func addWorkoutHandler(w http.ResponseWriter, r *http.Request) {
+    if r.Method != http.MethodPost {
+        http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+        return
+    }
+
+    // Parse JSON data
+    var workout struct {
+        DayID    string `json:"day_id"`
+        Name     string `json:"name"`
+        Duration int    `json:"duration"`
+    }
+
+    err := json.NewDecoder(r.Body).Decode(&workout)
+    if err != nil {
+        log.Printf("Invalid JSON data: %v", err)
+        http.Error(w, "Invalid JSON data", http.StatusBadRequest)
+        return
+    }
+
+    if workout.DayID == "" || workout.Name == "" || workout.Duration <= 0 {
+        http.Error(w, "Missing or invalid fields", http.StatusBadRequest)
+        return
+    }
+
+    // Insert workout into the database
+    var workoutID int
+    err = db.QueryRow("INSERT INTO workouts (day_id, name, duration) VALUES ($1, $2, $3) RETURNING id",
+        workout.DayID, workout.Name, workout.Duration).Scan(&workoutID)
+    if err != nil {
+        log.Printf("Error inserting workout: %v", err)
+        http.Error(w, "Error adding workout", http.StatusInternalServerError)
+        return
+    }
+
+    // Respond with the new workout ID
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(map[string]interface{}{
+        "status": "success",
+        "id":     workoutID,
+    })
+}
+
+
 func listWorkoutsHandler(w http.ResponseWriter, r *http.Request) {
-	rows, err := db.Query("SELECT id, name, duration, time FROM workouts ORDER BY time DESC")
+	fmt.Printf("Got here")
+	dayIDStr := r.URL.Query().Get("day_id")
+	if dayIDStr == "" {
+		http.Error(w, "day_id parameter is required", http.StatusBadRequest)
+		return
+	}
+
+	
+
+	dayID, err := strconv.Atoi(dayIDStr)
+	fmt.Printf("got %v", dayID)
+
 	if err != nil {
+		http.Error(w, "Invalid day_id parameter", http.StatusBadRequest)
+		return
+	}
+	rows, err := db.Query("SELECT id, name, duration FROM workouts WHERE day_id = $1", dayID)
+	if err != nil {
+		log.Printf("Error executing query: %v", err)
 		http.Error(w, "Error fetching workouts", http.StatusInternalServerError)
 		return
 	}
+
 	defer rows.Close()
 
 	var workouts []Workout
 	for rows.Next() {
 		var workout Workout
-		if err := rows.Scan(&workout.ID, &workout.Name, &workout.Duration, &workout.Time); err != nil {
+		if err := rows.Scan(&workout.ID, &workout.Name, &workout.Duration); err != nil {
 			http.Error(w, "Error scanning workouts", http.StatusInternalServerError)
 			return
 		}
@@ -83,28 +226,49 @@ func addLiftHandler(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    var lift Lift
-    err := json.NewDecoder(r.Body).Decode(&lift)
-    if err != nil {
-        log.Printf("Error decoding JSON: %v", err)
+    var lift struct {
+        WorkoutID int     `json:"workout_id"`
+        Name      string  `json:"name"`
+        Weight    float64 `json:"weight"`
+        Reps      int     `json:"reps"`
+        LiftOrder int     `json:"lift_order"`
+        RestTime  int     `json:"rest_time"`
+        BPM       int     `json:"bpm"`
+    }
+
+    // Decode JSON from the request body
+    if err := json.NewDecoder(r.Body).Decode(&lift); err != nil {
+        log.Printf("Invalid JSON format: %v", err)
         http.Error(w, "Invalid JSON data", http.StatusBadRequest)
         return
     }
 
-    log.Printf("Received Lift: %+v", lift)
+    // Validate the incoming data
+    if lift.WorkoutID <= 0 || lift.Name == "" || lift.Weight <= 0 || lift.Reps <= 0 || lift.LiftOrder <= 0 {
+        http.Error(w, "Missing or invalid fields", http.StatusBadRequest)
+        return
+    }
 
-	_, err = db.Exec(`
-        INSERT INTO lifts (workout_id, name, weight, reps, lift_order, rest_time, bpm)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-		lift.WorkoutID, lift.Name, lift.Weight, lift.Reps, lift.LiftOrder, lift.RestTime, lift.BPM)
-	if err != nil {
-		http.Error(w, "Error adding lift", http.StatusInternalServerError)
-		return
-	}
+    // Insert the lift into the database
+    _, err := db.Exec(
+        "INSERT INTO lifts (workout_id, name, weight, reps, lift_order, rest_time, bpm) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+        lift.WorkoutID, lift.Name, lift.Weight, lift.Reps, lift.LiftOrder, lift.RestTime, lift.BPM,
+    )
+    if err != nil {
+        log.Printf("Error inserting lift: %v", err)
+        http.Error(w, "Error adding lift", http.StatusInternalServerError)
+        return
+    }
 
-	log.Printf("Lift Added: %v", lift)
-	w.WriteHeader(http.StatusOK)
+    // Return a JSON response
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(map[string]string{
+        "status":  "success",
+        "message": "Lift added successfully",
+    })
 }
+
+
 
 func listLiftsHandler(w http.ResponseWriter, r *http.Request) {
 	workoutID := r.URL.Query().Get("workout_id")
