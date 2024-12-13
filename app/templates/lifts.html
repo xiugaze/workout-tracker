@@ -9,6 +9,7 @@
 <body>
     <div class="container">
         <h1>Lifts for {{.WorkoutName}}</h1>
+        <h2>Test<h2>
         
         <!-- Add Lift Form -->
         <form id="addLiftForm" method="POST">
@@ -19,7 +20,7 @@
             <input type="number" id="liftOrder" name="lift_order" placeholder="Order" required>
             <input type="number" id="restTime" name="rest_time" placeholder="Rest Time (seconds)" required>
             <input type="number" id="bpm" name="bpm" placeholder="BPM (optional)">
-            <button type="submit">Add Lift</button>
+            <a href="/add-lift-button"><button type="submit">Add Lift</button></a>
         </form>
 
         <!-- Lifts List -->
@@ -35,59 +36,5 @@
             <button>Back to Workouts</button>
         </a>
     </div>
-
-    <script>
-        document.addEventListener("DOMContentLoaded", function () {
-            const addLiftForm = document.getElementById("addLiftForm");
-            addLiftForm.addEventListener("submit", async function (event) {
-                console.log("JavaScript loaded successfully");
-                event.preventDefault(); // Prevent default form submission behavior
-    
-                alert("Button was clicked!"); // For debugging, confirm button click is detected.
-    
-                const workoutID = addLiftForm.querySelector('input[name="workout_id"]').value;
-                const name = document.getElementById("liftName").value;
-                const weight = parseFloat(document.getElementById("liftWeight").value);
-                const reps = parseInt(document.getElementById("liftReps").value, 10);
-                const liftOrder = parseInt(document.getElementById("liftOrder").value, 10);
-                const restTime = parseInt(document.getElementById("restTime").value, 10);
-                const bpm = parseInt(document.getElementById("bpm").value, 10) || null;
-    
-                if (!workoutID || !name || isNaN(weight) || isNaN(reps) || isNaN(liftOrder) || isNaN(restTime)) {
-                    alert("Please provide valid lift details.");
-                    return;
-                }
-    
-                const liftData = {
-                    workout_id: parseInt(workoutID, 10),
-                    name: name,
-                    weight: weight,
-                    reps: reps,
-                    lift_order: liftOrder,
-                    rest_time: restTime,
-                    bpm: bpm,
-                };
-    
-                try {
-                    const response = await fetch('/add-lift', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(liftData),
-                    });
-    
-                    if (!response.ok) {
-                        const errorText = await response.text();
-                        throw new Error(`Error adding lift: ${errorText}`);
-                    }
-    
-                    alert("Lift added successfully!");
-                    location.reload(); // Reload the page to show the new lift
-                } catch (error) {
-                    console.error("Error adding lift:", error);
-                    alert("Failed to add lift. Please try again.");
-                }
-            });
-        });
-    </script>
 </body>
 </html>

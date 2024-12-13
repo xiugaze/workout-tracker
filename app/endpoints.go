@@ -75,6 +75,7 @@ func addWeekHandler(w http.ResponseWriter, r *http.Request) {
         return
     }
 
+    incrementVisit("add-week")
     w.WriteHeader(http.StatusOK)
 }
 
@@ -101,6 +102,7 @@ func addDayHandler(w http.ResponseWriter, r *http.Request) {
         return
     }
 
+    incrementVisit("add-day")
     w.Header().Set("Content-Type", "application/json")
     json.NewEncoder(w).Encode(map[string]interface{}{
         "status": "success",
@@ -129,6 +131,7 @@ func addMealHandler(w http.ResponseWriter, r *http.Request) {
         return
     }
 
+    incrementVisit("add-meal")
     w.WriteHeader(http.StatusOK)
     json.NewEncoder(w).Encode(map[string]string{
         "status":  "success",
@@ -171,6 +174,7 @@ func addWorkoutHandler(w http.ResponseWriter, r *http.Request) {
         return
     }
 
+    incrementVisit("add-workout")
     // Respond with the new workout ID
     w.Header().Set("Content-Type", "application/json")
     json.NewEncoder(w).Encode(map[string]interface{}{
@@ -216,6 +220,7 @@ func listWorkoutsHandler(w http.ResponseWriter, r *http.Request) {
 		workouts = append(workouts, workout)
 	}
 
+	incrementVisit("list-workouts")
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(workouts)
 }
@@ -260,6 +265,7 @@ func addLiftHandler(w http.ResponseWriter, r *http.Request) {
         return
     }
 
+    incrementVisit("add-lift")
     // Return a JSON response
     w.Header().Set("Content-Type", "application/json")
     json.NewEncoder(w).Encode(map[string]string{
@@ -296,6 +302,7 @@ func listLiftsHandler(w http.ResponseWriter, r *http.Request) {
 		lifts = append(lifts, lift)
 	}
 
+	incrementVisit("list-lifts")
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(lifts)
 }
@@ -321,4 +328,18 @@ func deleteWorkoutHandler(w http.ResponseWriter, r *http.Request) {
     }
 
     w.WriteHeader(http.StatusOK)
+}
+
+func incrementVisit(endpoint string) {
+    query := `
+    UPDATE endpoint_visits
+    SET visit_count = visit_count + 1
+    WHERE endpoint = $1;
+    `
+    _, err := db.Exec(query, endpoint)
+    if err != nil {
+        log.Printf("Error incrementing visit count for %s: %v", endpoint, err)
+    } else {
+        log.Printf("Visit count incremented for %s", endpoint)
+    }
 }
