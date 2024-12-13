@@ -54,9 +54,9 @@ func initDB() {
         log.Fatal(err)
     }
 
-    createWorkoutsTable()
     createWeeksTable()
     createDaysTable()
+    createWorkoutsTable()
     createMealsTable()
     createLiftsTable()
     createEndpointVisitsTable()
