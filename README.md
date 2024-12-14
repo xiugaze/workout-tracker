@@ -4,7 +4,7 @@
 This application is a custom workout tracker written in Go that allows users to categorize their workouts and meals by day and week.
 
 ## Getting Started
-### Prereuisites
+### Prerequisites
 - Go version 1.16 or higher.
 - PostgreSQL database.
 
