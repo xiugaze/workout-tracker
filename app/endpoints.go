@@ -58,6 +58,7 @@ type Meal struct {
 }
 
 func addWeekHandler(w http.ResponseWriter, r *http.Request) {
+    incrementVisit("add-week")
     if r.Method != http.MethodPost {
         http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
         return
@@ -75,11 +76,11 @@ func addWeekHandler(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    incrementVisit("add-week")
     w.WriteHeader(http.StatusOK)
 }
 
 func addDayHandler(w http.ResponseWriter, r *http.Request) {
+    incrementVisit("add-day")
     if r.Method != http.MethodPost {
         http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
         return
@@ -102,7 +103,6 @@ func addDayHandler(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    incrementVisit("add-day")
     w.Header().Set("Content-Type", "application/json")
     json.NewEncoder(w).Encode(map[string]interface{}{
         "status": "success",
@@ -112,6 +112,7 @@ func addDayHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func addMealHandler(w http.ResponseWriter, r *http.Request) {
+    incrementVisit("add-meal")
     if r.Method != http.MethodPost {
         http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
         return
@@ -131,7 +132,6 @@ func addMealHandler(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    incrementVisit("add-meal")
     w.WriteHeader(http.StatusOK)
     json.NewEncoder(w).Encode(map[string]string{
         "status":  "success",
@@ -140,6 +140,7 @@ func addMealHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func addWorkoutHandler(w http.ResponseWriter, r *http.Request) {
+    incrementVisit("add-workout")
     if r.Method != http.MethodPost {
         http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
         return
@@ -174,7 +175,6 @@ func addWorkoutHandler(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    incrementVisit("add-workout")
     // Respond with the new workout ID
     w.Header().Set("Content-Type", "application/json")
     json.NewEncoder(w).Encode(map[string]interface{}{
@@ -185,7 +185,7 @@ func addWorkoutHandler(w http.ResponseWriter, r *http.Request) {
 
 
 func listWorkoutsHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("Got here")
+	incrementVisit("list-workouts")
 	dayIDStr := r.URL.Query().Get("day_id")
 	if dayIDStr == "" {
 		http.Error(w, "day_id parameter is required", http.StatusBadRequest)
@@ -220,12 +220,12 @@ func listWorkoutsHandler(w http.ResponseWriter, r *http.Request) {
 		workouts = append(workouts, workout)
 	}
 
-	incrementVisit("list-workouts")
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(workouts)
 }
 
 func addLiftHandler(w http.ResponseWriter, r *http.Request) {
+    incrementVisit("add-lift")
     if r.Method != http.MethodPost {
         http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
         return
@@ -265,7 +265,6 @@ func addLiftHandler(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    incrementVisit("add-lift")
     // Return a JSON response
     w.Header().Set("Content-Type", "application/json")
     json.NewEncoder(w).Encode(map[string]string{
@@ -277,6 +276,7 @@ func addLiftHandler(w http.ResponseWriter, r *http.Request) {
 
 
 func listLiftsHandler(w http.ResponseWriter, r *http.Request) {
+	incrementVisit("list-lifts")
 	workoutID := r.URL.Query().Get("workout_id")
 	if workoutID == "" {
 		http.Error(w, "Missing workout_id", http.StatusBadRequest)
@@ -302,7 +302,6 @@ func listLiftsHandler(w http.ResponseWriter, r *http.Request) {
 		lifts = append(lifts, lift)
 	}
 
-	incrementVisit("list-lifts")
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(lifts)
 }
