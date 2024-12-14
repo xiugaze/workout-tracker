@@ -307,6 +307,7 @@ func listLiftsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func deleteWorkoutHandler(w http.ResponseWriter, r *http.Request) {
+    incrementVisit("delete-workout")
     if r.Method != http.MethodPost {
         http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
         return
