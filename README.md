@@ -16,6 +16,12 @@ just build
 
 Then the container should build itself automatically.
 
+To navigate the the analytics page on our website, simply visit the following hyperlink:
+
+```
+ip-address/analytics
+```
+
 ## API Documentation
 
 ### Endpoints
