@@ -1,47 +1,74 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Movement</title>
-  <script src="https://unpkg.com/htmx.org"></script>
-</head>
-<body>
-  <h1>Movement</h1>
-  <form hx-post="/submit" hx-swap="outerHTML">
-    <div style="display: flex; flex-direction: row; gap: 10px;">
-      <div>
-        <label for="movement">Movement</label><br>
-        <input type="text" id="movement" name="movement" required>
-      </div>
-    </div>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Movement</title>
+    <script src="https://unpkg.com/htmx.org"></script>
+  </head>
+  <body>
+    <h1>Movement</h1>
+    <div id="test-div">Test</div>
 
-    <!--sets-->
-    <div style="display: flex; flex-direction: row; gap: 10px;">
-      <div>
-        <label for="weight1">Weight</label><br>
-        <input type="number" id="weight1" name="weight1" required>
+    <form hx-post="/submit" hx-swap="outerHTML">
+      <div style="display: flex; flex-direction: row; gap: 10px;">
+        <div>
+          <label for="movement">Movement</label><br>
+          <input type="text" id="movement" name="movement" required>
+        </div>
       </div>
 
-      <div>
-        <label for="reps1">Reps</label><br>
-        <input type="number" id="reps1" name="reps1" required>
-      </div>
-    </div>
-    <br>
+      <!--sets-->
+      <div class="set-row" style="display: flex; flex-direction: row; gap: 10px;">
+        <div>
+          <label for="weight1">Weight</label><br>
+          <input type="number" id="weight1" name="weight1" required>
+        </div>
 
-    <!--set and rep state handled client-side-->
-    <button 
-      hx-get="/addCol" 
-      hx-target="this"
-      hx-vals='js:{counter: ++counter}'
-      hx-swap="beforebegin"
-      data-counter="1">Add Set</button> 
-    <button type="submit">Submit</button>
-  </form>
-  <script>
+        <div>
+          <label for="reps1">Reps</label><br>
+          <input type="number" id="reps1" name="reps1" required>
+        </div>
+      </div>
+
+      <!--set and rep state handled client-side-->
+      <button 
+        hx-get="/addCol" 
+        hx-target="this"
+        hx-vals='js:{counter: add()}'
+        hx-swap="beforebegin"> + </button> 
+      <button
+        hx-post="/removeRow"
+        hx-target="previous div.set-row"
+        hx-vals='js:{counter: remove()}'
+        hx-swap="delete"
+        id="delete-button"
+      >Delete test</button>
+      <button type="submit" id="submit-button">Submit</button>
+    </form>
+    <script>
     let counter = 1
-  </script>
-</body>
+    const delete_button = document.getElementById("delete-button")
+    const submit_button = document.getElementById("submit-button")
+    
+    function add() {
+      ++counter
+      if(counter > 0) {
+        delete_button.disabled = false;
+        submit_button.disabled = false;
+      }
+      return counter
+    }
+
+    function remove() {
+      --counter
+      if(counter < 1) {
+        delete_button.disabled = true;
+        submit_button.disabled = true;
+      }
+      return counter
+    }
+    </script>
+  </body>
 </html>
 

@@ -8,7 +8,7 @@ import (
 )
 
 var tmpl = template.Must(template.New("addCol").Parse(`
-    <div style="display: flex; flex-direction: row; gap: 10px;">
+    <div class="set-row" style="display: flex; flex-direction: row; gap: 10px;">
       <div>
         <label for="weight{{.Counter}}">Weight</label><br>
         <input type="number" id="weight{{.Counter}}" name="weight{{.Counter}}" required>
@@ -18,7 +18,6 @@ var tmpl = template.Must(template.New("addCol").Parse(`
         <input type="number" id="reps{{.Counter}}" name="reps{{.Counter}}" required>
       </div>
     </div>
-    <br>
 `))
 
 func main() {
@@ -26,6 +25,7 @@ func main() {
     http.Handle("/", fs)
     http.HandleFunc("/addCol", addCol)
     http.HandleFunc("/submit", submit)
+    http.HandleFunc("/removeRow", removeRow)
 
     err := http.ListenAndServe(":8080", nil)
     if err != nil {
@@ -50,6 +50,13 @@ func addCol(w http.ResponseWriter, r *http.Request) {
     }
 }
 
+func removeRow(w http.ResponseWriter, r *http.Request) { 
+    log.Printf("attempting remove")
+    // w.WriteHeader(http.StatusNoContent)
+    w.Header().Set("Content-Type", "text/html")
+    fmt.Fprint(w, `
+    <p>Thank you for your submission!</p>`)
+}
 
 func submit(w http.ResponseWriter, r *http.Request) {
     err := r.ParseForm()
